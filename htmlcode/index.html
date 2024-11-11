@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Pathfinding</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        #grid {
+            display: grid;
+            grid-gap: 2px;
+            margin-top: 20px;
+        }
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-color: lightgrey;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .blocked {
+            background-color: red;
+        }
+        .path {
+            background-color: green;
+        }
+        .centered {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h3 class="centered">19CSE451 Principles of Artificial Intelligence : Case Study review</h3>
+    <h1 class="centered">Optimizing Autonomous Drone Delivery Systems in Smart Cities</h1>
+    <label for="grid_width">Grid Width: </label>
+    <input type="number" id="grid_width" value="10"><br>
+
+    <label for="grid_height">Grid Height: </label>
+    <input type="number" id="grid_height" value="10"><br>
+
+    <label for="start_x">Start Node (x,y): </label>
+    <input type="text" id="start_y" placeholder="y"><input type="text" id="start_x" placeholder="x"><br>
+
+    <label for="goal_x">Goal Node (x,y): </label>
+    <input type="text" id="goal_y" placeholder="y"><input type="text" id="goal_x" placeholder="x"><br>
+
+    <label for="blocked_weather">Blocked Weather Nodes (x,y; x,y): </label>
+    <input type="text" id="blocked_weather" placeholder="1,2; 3,4"><br>
+
+    <label for="blocked_traffic">Blocked Traffic Nodes (x,y; x,y): </label>
+    <input type="text" id="blocked_traffic" placeholder="5,6; 7,8"><br>
+
+    <label for="no_fly_zone">No-Fly Zone Nodes (x,y; x,y): </label>
+    <input type="text" id="no_fly_zone" placeholder="2,3; 4,5"><br>
+
+    <button id="findPath">Find Path</button>
+
+    <div id="grid"></div>
+
+    <script>
+        function createGrid(width, height) {
+            $('#grid').css('grid-template-columns', `repeat(${width}, 40px)`);
+            $('#grid').empty();
+            for (let i = 0; i < width * height; i++) {
+                $('#grid').append('<div class="cell"></div>');
+            }
+        }
+
+        $(document).ready(function() {
+            const gridWidth = parseInt($('#grid_width').val());
+            const gridHeight = parseInt($('#grid_height').val());
+            createGrid(gridWidth, gridHeight);
+
+            $('#grid_width, #grid_height').change(function() {
+                const width = $('#grid_width').val();
+                const height = $('#grid_height').val();
+                createGrid(width, height);
+            });
+
+            $('#findPath').click(function() {
+                const gridWidth = parseInt($('#grid_width').val());
+                const gridHeight = parseInt($('#grid_height').val());
+                const startY = parseInt($('#start_y').val());
+                const startX = parseInt($('#start_x').val());
+                const goalY = parseInt($('#goal_y').val());
+                const goalX = parseInt($('#goal_x').val());
+                const blockedWeather = $('#blocked_weather').val();
+                const blockedTraffic = $('#blocked_traffic').val();
+                const noFlyZone = $('#no_fly_zone').val();
+
+                $.post('/find_path', {
+                    grid_width: gridWidth,
+                    grid_height: gridHeight,
+                    start_x: startX,
+                    start_y: startY,
+                    goal_x: goalX,
+                    goal_y: goalY,
+                    blocked_weather: blockedWeather,
+                    blocked_traffic: blockedTraffic,
+                    no_fly_zone: noFlyZone
+                }, function(data) {
+                    $('.cell').removeClass('blocked path');
+
+                    const setBlockedCells = (nodeList) => {
+                        nodeList.split(';').forEach(function(node) {
+                            if (node) {
+                                const [y, x] = node.split(',').map(Number);
+                                if (y >= 0 && y < gridHeight && x >= 0 && x < gridWidth) {
+                                    $(`.cell:eq(${y * gridWidth + x})`).addClass('blocked');
+                                }
+                            }
+                        });
+                    };
+
+                    setBlockedCells(blockedWeather);
+                    setBlockedCells(blockedTraffic);
+                    setBlockedCells(noFlyZone);
+
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        data.path.forEach(function(pos) {
+                            $(`.cell:eq(${pos[0] * gridWidth + pos[1]})`).addClass('path');
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
